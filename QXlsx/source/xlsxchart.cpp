@@ -171,6 +171,22 @@ void Chart::addSeries(const CellRange &range,
     }
 }
 
+void Chart::addSeriesReferences(const QString &xRangeRef,
+                                const QString &yRangeRef,
+                                const QString &nameRef)
+{
+    Q_D(Chart);
+
+    if (yRangeRef.isEmpty())
+        return;
+
+    auto series = std::make_shared<XlsxSeries>();
+    series->axDataSource_numRef     = xRangeRef;
+    series->numberDataSource_numRef = yRangeRef;
+    series->headerV_numRef          = nameRef;
+    d->seriesList.append(series);
+}
+
 /*!
  * Set the type of the chart to \a type
  */
@@ -1166,6 +1182,18 @@ void ChartPrivate::saveXmlSer(QXmlStreamWriter &writer, XlsxSeries *ser, int id)
         writer.writeTextElement(QStringLiteral("c:f"), header2);
         writer.writeEndElement();
         writer.writeEndElement();
+    }
+
+    if (!ser->axDataSource_numRef.isEmpty()) {
+        if (chartType == Chart::CT_ScatterChart || chartType == Chart::CT_BubbleChart)
+            writer.writeStartElement(QStringLiteral("c:xVal"));
+        else
+            writer.writeStartElement(QStringLiteral("c:cat"));
+
+        writer.writeStartElement(QStringLiteral("c:numRef"));
+        writer.writeTextElement(QStringLiteral("c:f"), ser->axDataSource_numRef);
+        writer.writeEndElement(); // c:numRef
+        writer.writeEndElement(); // c:xVal or c:cat
     }
 
     if (!ser->numberDataSource_numRef.isEmpty()) {

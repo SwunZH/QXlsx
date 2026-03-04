@@ -59,6 +59,9 @@ public:
                    bool headerH         = false,
                    bool headerV         = false,
                    bool swapHeaders     = false);
+    void addSeriesReferences(const QString &xRangeRef,
+                             const QString &yRangeRef,
+                             const QString &nameRef = QString());
     void setChartType(ChartType type);
     void setChartStyle(int id);
     void setAxisTitle(Chart::ChartAxisPos pos, QString axisTitle);
