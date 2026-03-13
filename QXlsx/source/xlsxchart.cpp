@@ -36,8 +36,8 @@ Chart::Chart(AbstractSheet *parent, CreateFlag flag)
     // d->legendPos = Chart::ChartAxisPos::None;
     d->legendPos             = Chart::None;
     d->legendOverlay         = false;
-    d->majorGridlinesEnabled = false;
-    d->minorGridlinesEnabled = false;
+    // d->majorGridlinesEnabled = false;
+    // d->minorGridlinesEnabled = false;
 }
 
 /*!
@@ -246,8 +246,34 @@ void Chart::setGridlinesEnable(bool majorGridlinesEnable, bool minorGridlinesEna
 {
     Q_D(Chart);
 
-    d->majorGridlinesEnabled = majorGridlinesEnable;
-    d->minorGridlinesEnabled = minorGridlinesEnable;
+    d->axisMajorGridlines[XlsxAxis::Left] = majorGridlinesEnable;
+    d->axisMinorGridlines[XlsxAxis::Left] = minorGridlinesEnable;
+}
+
+void Chart::setAxisMin(ChartAxisPos pos, double min)
+{
+   Q_D(Chart);
+    d->axisMinValues[static_cast<XlsxAxis::AxisPos>(pos)] = min;
+}
+
+void Chart::setAxisMax(ChartAxisPos pos, double max)
+{
+    Q_D(Chart);
+    d->axisMaxValues[static_cast<XlsxAxis::AxisPos>(pos)] = max;
+}
+
+void Chart::setAxisTickLblPos(ChartAxisPos pos, AxisTickLblPos lblPos)
+{
+    Q_D(Chart);
+    d->axisTickLblPos[static_cast<XlsxAxis::AxisPos>(pos)] = lblPos;
+}
+
+void Chart::setAxisGridlines(ChartAxisPos pos, bool majorGridlines, bool minorGridlines)
+{
+    Q_D(Chart);
+    XlsxAxis::AxisPos axPos = static_cast<XlsxAxis::AxisPos>(pos);
+    d->axisMajorGridlines[axPos] = majorGridlines;
+    d->axisMinorGridlines[axPos] = minorGridlines;
 }
 
 /*!
@@ -1367,10 +1393,12 @@ bool ChartPrivate::loadXmlAxisEG_AxShared(QXmlStreamReader &reader, XlsxAxis *ax
                 }
             } else if (reader.name() == QLatin1String("majorGridlines")) {
                 //! TODO anything else?
-                majorGridlinesEnabled = true;
+                // majorGridlinesEnabled = true;
+                axisMajorGridlines[axis->axisPos] = true;
             } else if (reader.name() == QLatin1String("minorGridlines")) {
                 //! TODO anything else?
-                minorGridlinesEnabled = true;
+                // minorGridlinesEnabled = true;
+                axisMinorGridlines[axis->axisPos] = true;
             } else if (reader.name() == QLatin1String("title")) {
                 // title
                 if (!loadXmlAxisEG_AxShared_Title(reader, axis)) {
@@ -1420,7 +1448,15 @@ bool ChartPrivate::loadXmlAxisEG_AxShared_Scaling(QXmlStreamReader &reader, Xlsx
     while (!reader.atEnd()) {
         reader.readNextStartElement();
         if (reader.tokenType() == QXmlStreamReader::StartElement) {
-            if (reader.name() == QLatin1String("orientation")) {
+            if (reader.name() == QLatin1String("max")) {
+                bool ok = false;
+                double val = reader.attributes().value(QLatin1String("val")).toDouble(&ok);
+                if (ok) axisMaxValues[axis->axisPos] = val;
+            } else if (reader.name() == QLatin1String("min")) {
+                bool ok = false;
+                double val = reader.attributes().value(QLatin1String("val")).toDouble(&ok);
+                if (ok) axisMinValues[axis->axisPos] = val;
+            } else if (reader.name() == QLatin1String("orientation")) {
             } else {
             }
         } else if (reader.tokenType() == QXmlStreamReader::EndElement &&
@@ -1875,10 +1911,34 @@ void ChartPrivate::saveXmlAxisEG_AxShared(QXmlStreamWriter &writer, XlsxAxis *ax
         QStringLiteral("c:axId")); // 21.2.2.9. axId (Axis ID) (mandatory value)
     writer.writeAttribute(QStringLiteral("val"), QString::number(axis->axisId));
 
+    //--> 20260313-SwunZH: axis min max
+    /*
+    //--> origin
     writer.writeStartElement(QStringLiteral("c:scaling"));     // CT_Scaling (mandatory value)
     writer.writeEmptyElement(QStringLiteral("c:orientation")); // CT_Orientation
     writer.writeAttribute(QStringLiteral("val"), QStringLiteral("minMax")); // ST_Orientation
     writer.writeEndElement();                                               // c:scaling
+    //<-- origin
+    */
+    writer.writeStartElement(QStringLiteral("c:scaling")); // CT_Scaling
+
+    // c:max 必须在 c:orientation 之前（OOXML 规范顺序）
+    if (axisMaxValues.contains(axis->axisPos)) {
+        writer.writeEmptyElement(QStringLiteral("c:max"));
+        writer.writeAttribute(QStringLiteral("val"),
+                              QString::number(axisMaxValues[axis->axisPos], 'f', 10));
+    }
+    if (axisMinValues.contains(axis->axisPos)) {
+        writer.writeEmptyElement(QStringLiteral("c:min"));
+        writer.writeAttribute(QStringLiteral("val"),
+                              QString::number(axisMinValues[axis->axisPos], 'f', 10));
+    }
+
+    writer.writeEmptyElement(QStringLiteral("c:orientation"));
+    writer.writeAttribute(QStringLiteral("val"), QStringLiteral("minMax"));
+
+    writer.writeEndElement(); // c:scaling
+    //<-- 20260313-SwunZH: axis min max
 
     writer.writeEmptyElement(QStringLiteral("c:axPos")); // axPos CT_AxPos (mandatory value)
     QString pos = GetAxisPosString(axis->axisPos);
@@ -1886,14 +1946,36 @@ void ChartPrivate::saveXmlAxisEG_AxShared(QXmlStreamWriter &writer, XlsxAxis *ax
         writer.writeAttribute(QStringLiteral("val"), pos); // ST_AxPos
     }
 
+    //--> X Y 分开控制
+    /*
     if (majorGridlinesEnabled) {
         writer.writeEmptyElement(QStringLiteral("c:majorGridlines"));
     }
     if (minorGridlinesEnabled) {
         writer.writeEmptyElement(QStringLiteral("c:minorGridlines"));
     }
+    */
+    if (axisMajorGridlines.value(axis->axisPos, false)) {
+        writer.writeEmptyElement(QStringLiteral("c:majorGridlines"));
+    }
+    if (axisMinorGridlines.value(axis->axisPos, false)) {
+        writer.writeEmptyElement(QStringLiteral("c:minorGridlines"));
+    }
+    //<-- X Y 分开控制
 
     saveXmlAxisEG_AxShared_Title(writer, axis); // "c:title" CT_Title
+
+    if (axisTickLblPos.contains(axis->axisPos)) {
+        QString lblPosStr;
+        switch (axisTickLblPos[axis->axisPos]) {
+        case Chart::TLP_Low:    lblPosStr = QStringLiteral("low");    break;
+        case Chart::TLP_High:   lblPosStr = QStringLiteral("high");   break;
+        case Chart::TLP_None:   lblPosStr = QStringLiteral("none");   break;
+        default:                lblPosStr = QStringLiteral("nextTo"); break;
+        }
+        writer.writeEmptyElement(QStringLiteral("c:tickLblPos"));
+        writer.writeAttribute(QStringLiteral("val"), lblPosStr);
+    }
 
     writer.writeEmptyElement(QStringLiteral("c:crossAx")); // crossAx (mandatory value)
     writer.writeAttribute(QStringLiteral("val"), QString::number(axis->crossAx));

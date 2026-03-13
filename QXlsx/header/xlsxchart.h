@@ -41,6 +41,14 @@ public:
     };
     enum ChartAxisPos { None = (-1), Left = 0, Right, Top, Bottom };
 
+    // 标签位置: 低/高/无
+    enum AxisTickLblPos {
+        TLP_NextTo,
+        TLP_Low,
+        TLP_High,
+        TLP_None
+    };
+
 private:
     friend class AbstractSheet;
     friend class Worksheet;
@@ -68,6 +76,18 @@ public:
     void setChartTitle(QString strchartTitle);
     void setChartLegend(Chart::ChartAxisPos legendPos, bool overlap = false);
     void setGridlinesEnable(bool majorGridlinesEnable = false, bool minorGridlinesEnable = false);
+    
+        // 新增：轴范围接口
+    void setAxisMin(ChartAxisPos pos, double min);
+    void setAxisMax(ChartAxisPos pos, double max);
+
+    // 设置标签位置 低/高/无
+    void setAxisTickLblPos(ChartAxisPos pos, AxisTickLblPos lblPos);
+
+    // 设置X Y 主/次 网格线
+    void setAxisGridlines(ChartAxisPos pos,
+                      bool majorGridlines,
+                      bool minorGridlines = false);
 
 public:
     bool loadFromXmlFile(QIODevice *device) override;

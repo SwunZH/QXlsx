@@ -49,6 +49,10 @@ public:
             axisNames[p] = axisTitle;
         }
     }
+    
+    // 新增：轴范围属性
+    double minValue = std::numeric_limits<double>::quiet_NaN();
+    double maxValue = std::numeric_limits<double>::quiet_NaN();
 
 public:
     Type type;
@@ -137,10 +141,18 @@ public:
     AbstractSheet *sheet;
     Chart::ChartAxisPos legendPos;
     bool legendOverlay;
-    bool majorGridlinesEnabled;
-    bool minorGridlinesEnabled;
+    //--> X Y 分开控制
+    // bool majorGridlinesEnabled;
+    // bool minorGridlinesEnabled;
+    QMap<XlsxAxis::AxisPos, bool> axisMajorGridlines;
+    QMap<XlsxAxis::AxisPos, bool> axisMinorGridlines;
 
     QString layout; // only for storing a read file
+
+    QMap<XlsxAxis::AxisPos, double> axisMinValues;  // axis 最小值
+    QMap<XlsxAxis::AxisPos, double> axisMaxValues;  // axis 最大值
+
+    QMap<XlsxAxis::AxisPos, Chart::AxisTickLblPos> axisTickLblPos; //标签位置
 };
 
 QT_END_NAMESPACE_XLSX
